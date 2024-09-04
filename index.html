@@ -64,7 +64,7 @@
     </div>
 
     <script>
-        const BACKEND_URL = 'https://zhengzhou-traffic-optimization-9624fa3fd60d.herokuapp.com';
+        const BACKEND_URL = 'https://zhengzhou-traffic-optimization-9624fa3fd60d.herokuapp.com/';
 
         // 初始化百度地图
         let map;
@@ -182,7 +182,7 @@
 
         async function saveRouteToBackend(start, end, distance, duration) {
             try {
-                const response = await fetch(`${BACKEND_URL}/api/routes`, {
+                const response = await fetch(`${BACKEND_URL}save_route`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -199,48 +199,27 @@
             }
         }
 
-        // 初始化知识图谱可视化
+        // 知识图谱可视化
         let network;
 
         async function initGraph() {
             try {
-                const response = await fetch(`${BACKEND_URL}/api/routes`);
+                const response = await fetch(`${BACKEND_URL}get_graph_data`);
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
-                const records = await response.json();
+                const data = await response.json();
 
-                const nodes = new vis.DataSet();
-                const edges = new vis.DataSet();
-
-                records.forEach(record => {
-                    const source = record.source;
-                    const target = record.target;
-                    const distance = record.distance;
-                    const duration = record.duration;
-
-                    if (!nodes.get(source)) {
-                        nodes.add({ id: source, label: source });
-                    }
-                    if (!nodes.get(target)) {
-                        nodes.add({ id: target, label: target });
-                    }
-
-                    edges.add({ 
-                        from: source, 
-                        to: target, 
-                        label: `${distance}\n${duration}`,
-                        arrows: 'to'
-                    });
-                });
+                const nodes = new vis.DataSet(data.nodes);
+                const edges = new vis.DataSet(data.edges);
 
                 const container = document.getElementById('graph');
-                const data = { nodes, edges };
+                const graphData = { nodes, edges };
                 const options = {
                     physics: false,
                     interaction: { hover: true }
                 };
-                network = new vis.Network(container, data, options);
+                network = new vis.Network(container, graphData, options);
 
                 network.on("click", function (params) {
                     if (params.nodes.length > 0) {
@@ -250,35 +229,37 @@
                 });
             } catch (error) {
                 console.error('Error initializing graph:', error);
-                document.getElementById('graph').innerHTML = '加载图谱数据时出错';
             }
         }
 
         async function showNodeDetails(nodeId) {
             try {
-                const response = await fetch(`${BACKEND_URL}/api/routes/${nodeId}`);
+                const response = await fetch(`${BACKEND_URL}get_node_details/${nodeId}`);
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
-                const records = await response.json();
+                const data = await response.json();
                 let details = `从 ${nodeId} 出发的路线:\n`;
-                records.forEach(record => {
-                    details += `到 ${record.destination}: 距离 ${record.distance}, 时间 ${record.duration}\n`;
+                data.routes.forEach(route => {
+                    details += `到 ${route.destination}: 距离 ${route.distance}, 时间 ${route.duration}\n`;
                 });
                 alert(details);
             } catch (error) {
                 console.error('Error fetching node details:', error);
-                alert('获取节点详情时出错');
+                alert('无法获取节点详情');
             }
         }
 
         async function updateGraphData() {
             showLoading('dataCollectionStatus', '正在更新图谱数据...');
             
-            // 更新图谱
-            await initGraph();
-            
-            document.getElementById('dataCollectionStatus').innerHTML = "数据已更新";
+            try {
+                await initGraph();
+                document.getElementById('dataCollectionStatus').innerHTML = "数据已更新";
+            } catch (error) {
+                console.error('Error updating graph data:', error);
+                document.getElementById('dataCollectionStatus').innerHTML = "更新数据时出错";
+            }
         }
 
         // 交通流量图表
