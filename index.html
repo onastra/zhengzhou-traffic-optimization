@@ -153,36 +153,61 @@
         }
 
         function calculateRoute() {
-            const start = document.getElementById('start').value;
-            const end = document.getElementById('end').value;
+    const start = document.getElementById('start').value;
+    const end = document.getElementById('end').value;
 
-            if (!start || !end) {
-                alert("请输入起点和终点");
-                return;
-            }
+    if (!start || !end) {
+        alert("请输入起点和终点");
+        return;
+    }
 
-            showLoading('info', '正在规划路线...');
+    console.log('Calculating route from', start, 'to', end);
+    showLoading('info', '正在规划路线...');
 
-            // 使用地址解析器确保地址有效
-            let geocoder = new BMap.Geocoder();
-            geocoder.getPoint(start, function(startPoint){
-                if (startPoint) {
-                    geocoder.getPoint(end, function(endPoint){
-                        if (endPoint) {
-                            driving.search(startPoint, endPoint);
-                        } else {
-                            document.getElementById('info').innerHTML = "无法解析终点地址，请检查输入";
-                        }
-                    }, "郑州市");
+    // 使用地址解析器确保地址有效
+    let geocoder = new BMap.Geocoder();
+    geocoder.getPoint(start, function(startPoint){
+        if (startPoint) {
+            geocoder.getPoint(end, function(endPoint){
+                if (endPoint) {
+                    driving.search(startPoint, endPoint);
                 } else {
-                    document.getElementById('info').innerHTML = "无法解析起点地址，请检查输入";
+                    document.getElementById('info').innerHTML = "无法解析终点地址，请检查输入";
                 }
             }, "郑州市");
+        } else {
+            document.getElementById('info').innerHTML = "无法解析起点地址，请检查输入";
         }
+    }, "郑州市");
+}
+
+// 修改driving的onSearchComplete回调
+driving = new BMap.DrivingRoute(map, {
+    renderOptions:{map: map, autoViewport: true},
+    onSearchComplete: async function(results){
+        if (driving.getStatus() == BMAP_STATUS_SUCCESS) {
+            let plan = results.getPlan(0);
+            let distance = plan.getDistance(true);
+            let duration = plan.getDuration(true);
+            document.getElementById('info').innerHTML = `距离：${distance}，预计时间：${duration}`;
+            
+            console.log('Route calculated successfully. Saving to backend...');
+            try {
+                await saveRouteToBackend(document.getElementById('start').value, document.getElementById('end').value, distance, duration);
+                console.log('Route saved. Updating graph...');
+                await updateGraphData();
+            } catch (error) {
+                console.error('Error in route calculation process:', error);
+            }
+        } else {
+            document.getElementById('info').innerHTML = "无法获取路线，错误码：" + driving.getStatus();
+        }
+    }
+});
 
         async function saveRouteToBackend(start, end, distance, duration) {
     try {
-        console.log('Saving route:', { start, end, distance, duration });
+        console.log('Attempting to save route:', { start, end, distance, duration });
         const response = await fetch(`${BACKEND_URL}/api/routes`, {
             method: 'POST',
             headers: {
@@ -194,11 +219,11 @@
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        console.log('Route saved successfully:', data);
+        console.log('Route saved successfully. Server response:', data);
         return data;
     } catch (error) {
         console.error('Error saving route:', error);
-        alert('保存路线数据时出错,请稍后再试');
+        alert(`保存路线数据时出错: ${error.message}`);
         throw error;
     }
 }
@@ -207,56 +232,70 @@
         let network;
 
         async function initGraph() {
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/routes`);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const records = await response.json();
-                console.log('Fetched records:', records);
-                const nodes = new vis.DataSet();
-                const edges = new vis.DataSet();
-
-                records.forEach(record => {
-                    const source = record.source;
-                    const target = record.target;
-                    const distance = record.distance;
-                    const duration = record.duration;
-
-                    if (!nodes.get(source)) {
-                        nodes.add({ id: source, label: source });
-                    }
-                    if (!nodes.get(target)) {
-                        nodes.add({ id: target, label: target });
-                    }
-
-                    edges.add({ 
-                        from: source, 
-                        to: target, 
-                        label: `${distance}\n${duration}`,
-                        arrows: 'to'
-                    });
-                });
-
-                const container = document.getElementById('graph');
-                const data = { nodes, edges };
-                const options = {
-                    physics: false,
-                    interaction: { hover: true }
-                };
-                network = new vis.Network(container, data, options);
-
-                network.on("click", function (params) {
-                    if (params.nodes.length > 0) {
-                        const nodeId = params.nodes[0];
-                        showNodeDetails(nodeId);
-                    }
-                });
-            } catch (error) {
-                console.error('Error initializing graph:', error);
-                document.getElementById('graph').innerHTML = '加载图谱数据时出错';
-            }
+    try {
+        console.log('Fetching route data from server...');
+        const response = await fetch(`${BACKEND_URL}/api/routes`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+        const records = await response.json();
+        console.log('Fetched records:', records);
+
+        if (records.length === 0) {
+            console.log('No records fetched from server.');
+            document.getElementById('graph').innerHTML = '暂无路线数据';
+            return;
+        }
+
+        const nodes = new vis.DataSet();
+        const edges = new vis.DataSet();
+
+        records.forEach((record, index) => {
+            console.log(`Processing record ${index}:`, record);
+            const source = record.start || record.source;
+            const target = record.end || record.target;
+            const distance = record.distance;
+            const duration = record.duration;
+
+            if (!nodes.get(source)) {
+                nodes.add({ id: source, label: source });
+                console.log('Added node:', source);
+            }
+            if (!nodes.get(target)) {
+                nodes.add({ id: target, label: target });
+                console.log('Added node:', target);
+            }
+
+            edges.add({ 
+                from: source, 
+                to: target, 
+                label: `${distance}\n${duration}`,
+                arrows: 'to'
+            });
+            console.log('Added edge:', { from: source, to: target });
+        });
+
+        const container = document.getElementById('graph');
+        const data = { nodes, edges };
+        const options = {
+            physics: false,
+            interaction: { hover: true }
+        };
+        network = new vis.Network(container, data, options);
+
+        console.log('Graph initialized with', nodes.length, 'nodes and', edges.length, 'edges');
+
+        network.on("click", function (params) {
+            if (params.nodes.length > 0) {
+                const nodeId = params.nodes[0];
+                showNodeDetails(nodeId);
+            }
+        });
+    } catch (error) {
+        console.error('Error initializing graph:', error);
+        document.getElementById('graph').innerHTML = `加载图谱数据时出错: ${error.message}`;
+    }
+}
 
         async function showNodeDetails(nodeId) {
             try {
@@ -277,22 +316,26 @@
         }
 
         async function updateGraphData() {
+    console.log('Starting graph data update...');
     showLoading('dataCollectionStatus', '正在更新图谱数据...');
     
     try {
         // 清除现有的图谱数据
         if (network) {
+            console.log('Destroying existing network...');
             network.destroy();
             network = null;
         }
 
         // 重新初始化图谱
+        console.log('Reinitializing graph...');
         await initGraph();
         
+        console.log('Graph data update completed.');
         document.getElementById('dataCollectionStatus').innerHTML = "数据已更新";
     } catch (error) {
         console.error('Error updating graph data:', error);
-        document.getElementById('dataCollectionStatus').innerHTML = "更新数据时出错,请稍后再试";
+        document.getElementById('dataCollectionStatus').innerHTML = `更新数据时出错: ${error.message}`;
     }
 }
 
