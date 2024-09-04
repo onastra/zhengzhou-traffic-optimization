@@ -181,23 +181,27 @@
         }
 
         async function saveRouteToBackend(start, end, distance, duration) {
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/routes`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ start, end, distance, duration }),
-                });
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const data = await response.json();
-                console.log('Route saved:', data);
-            } catch (error) {
-                console.error('Error saving route:', error);
-            }
+    try {
+        console.log('Saving route:', { start, end, distance, duration });
+        const response = await fetch(`${BACKEND_URL}/api/routes`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ start, end, distance, duration }),
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+        const data = await response.json();
+        console.log('Route saved successfully:', data);
+        return data;
+    } catch (error) {
+        console.error('Error saving route:', error);
+        alert('保存路线数据时出错,请稍后再试');
+        throw error;
+    }
+}
 
         // 初始化知识图谱可视化
         let network;
@@ -209,7 +213,7 @@
                     throw new Error('Network response was not ok');
                 }
                 const records = await response.json();
-
+                console.log('Fetched records:', records);
                 const nodes = new vis.DataSet();
                 const edges = new vis.DataSet();
 
@@ -273,13 +277,24 @@
         }
 
         async function updateGraphData() {
-            showLoading('dataCollectionStatus', '正在更新图谱数据...');
-            
-            // 更新图谱
-            await initGraph();
-            
-            document.getElementById('dataCollectionStatus').innerHTML = "数据已更新";
+    showLoading('dataCollectionStatus', '正在更新图谱数据...');
+    
+    try {
+        // 清除现有的图谱数据
+        if (network) {
+            network.destroy();
+            network = null;
         }
+
+        // 重新初始化图谱
+        await initGraph();
+        
+        document.getElementById('dataCollectionStatus').innerHTML = "数据已更新";
+    } catch (error) {
+        console.error('Error updating graph data:', error);
+        document.getElementById('dataCollectionStatus').innerHTML = "更新数据时出错,请稍后再试";
+    }
+}
 
         // 交通流量图表
         let trafficChart;
