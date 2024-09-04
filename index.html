@@ -170,8 +170,6 @@
                     geocoder.getPoint(end, function(endPoint){
                         if (endPoint) {
                             driving.search(startPoint, endPoint);
-                            // 在这里调用updateGraphData
-                            setTimeout(updateGraphData, 2000); // 给后端一些时间来处理新的路线数据
                         } else {
                             document.getElementById('info').innerHTML = "无法解析终点地址，请检查输入";
                         }
@@ -189,20 +187,13 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ 
-                        source: start,  // 使用source替代start
-                        target: end,    // 使用target替代end
-                        distance, 
-                        duration 
-                    }),
+                    body: JSON.stringify({ start, end, distance, duration }),
                 });
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
                 const data = await response.json();
                 console.log('Route saved:', data);
-                // 立即更新图谱
-                await updateGraphData();
             } catch (error) {
                 console.error('Error saving route:', error);
             }
@@ -283,54 +274,11 @@
 
         async function updateGraphData() {
             showLoading('dataCollectionStatus', '正在更新图谱数据...');
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/routes`);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const records = await response.json();
-                
-                const nodes = new vis.DataSet();
-                const edges = new vis.DataSet();
-
-                records.forEach(record => {
-                    const source = record.source;
-                    const target = record.target;
-                    const distance = record.distance;
-                    const duration = record.duration;
-
-                    if (!nodes.get(source)) {
-                        nodes.add({ id: source, label: source });
-                    }
-                    if (!nodes.get(target)) {
-                        nodes.add({ id: target, label: target });
-                    }
-
-                    edges.add({ 
-                        from: source, 
-                        to: target, 
-                        label: `${distance}\n${duration}`,
-                        arrows: 'to'
-                    });
-                });
-
-                const container = document.getElementById('graph');
-                const data = { nodes, edges };
-                const options = {
-                    physics: false,
-                    interaction: { hover: true }
-                };
-                if (network) {
-                    network.setData(data);
-                } else {
-                    network = new vis.Network(container, data, options);
-                }
-
-                document.getElementById('dataCollectionStatus').innerHTML = "数据已更新";
-            } catch (error) {
-                console.error('Error updating graph data:', error);
-                document.getElementById('dataCollectionStatus').innerHTML = "更新数据时出错";
-            }
+            
+            // 更新图谱
+            await initGraph();
+            
+            document.getElementById('dataCollectionStatus').innerHTML = "数据已更新";
         }
 
         // 交通流量图表
