@@ -7,66 +7,110 @@
     <script type="text/javascript" src="https://api.map.baidu.com/api?v=3.0&ak=0w8W4vPTaRFyzlaSSxnARGdEYpdqnDEs"></script>
     <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.2/dist/vis-network.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/vis-network@9.1.2/dist/dist/vis-network.min.css" rel="stylesheet" type="text/css" />
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
     <style>
         .suggestion-list { 
             position: absolute; 
             background: white; 
-            border: 1px solid #ccc; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 0.375rem;
             max-height: 200px; 
             overflow-y: auto; 
             width: 100%; 
             z-index: 1000;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         .suggestion-item {
-            padding: 5px;
+            padding: 0.5rem;
             cursor: pointer;
+            transition: background-color 0.2s;
         }
         .suggestion-item:hover {
-            background-color: #f0f0f0;
+            background-color: #f3f4f6;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
         }
     </style>
 </head>
-<body class="bg-gray-100">
-    <nav class="bg-blue-600 p-4 text-white">
-        <h1 class="text-2xl font-bold">郑州市交通优化可视化系统</h1>
+<body class="bg-gray-100 font-sans">
+    <nav class="bg-blue-600 p-4 text-white shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">郑州市交通优化可视化系统</h1>
+            <div class="space-x-4">
+                <a href="#" class="hover:text-blue-200 transition duration-300">首页</a>
+                <a href="#" class="hover:text-blue-200 transition duration-300">关于</a>
+                <a href="#" class="hover:text-blue-200 transition duration-300">联系我们</a>
+            </div>
+        </div>
     </nav>
+
     <div class="container mx-auto mt-8 p-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-semibold mb-4">地图视图</h2>
-                <div id="map" class="h-96 w-full mb-4"></div>
+                <h2 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fas fa-map-marked-alt mr-2 text-blue-500"></i>
+                    地图视图
+                </h2>
+                <div id="map" class="h-96 w-full mb-4 rounded-lg overflow-hidden shadow-inner"></div>
                 <div class="space-y-4">
                     <div class="relative">
-                        <input id="start" type="text" placeholder="起点" class="w-full p-2 border rounded">
-                        <div id="startSuggestions" class="suggestion-list"></div>
+                        <input id="start" type="text" placeholder="起点" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition duration-300">
+                        <div id="startSuggestions" class="suggestion-list custom-scrollbar"></div>
                     </div>
                     <div class="relative">
-                        <input id="end" type="text" placeholder="终点" class="w-full p-2 border rounded">
-                        <div id="endSuggestions" class="suggestion-list"></div>
+                        <input id="end" type="text" placeholder="终点" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition duration-300">
+                        <div id="endSuggestions" class="suggestion-list custom-scrollbar"></div>
                     </div>
-                    <button onclick="calculateRoute()" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition duration-300">规划路线</button>
-                    <div id="info" class="mt-4 p-4 bg-gray-100 rounded"></div>
+                    <button onclick="calculateRoute()" class="w-full bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition duration-300 flex items-center justify-center">
+                        <i class="fas fa-route mr-2"></i>
+                        规划路线
+                    </button>
+                    <div id="info" class="mt-4 p-4 bg-gray-100 rounded-lg shadow-inner"></div>
                 </div>
             </div>
             <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-semibold mb-4">知识图谱视图</h2>
-                <div id="graph" class="h-96 w-full mb-4"></div>
-                <button onclick="updateGraphData()" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 transition duration-300">更新图谱数据</button>
+                <h2 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fas fa-project-diagram mr-2 text-green-500"></i>
+                    知识图谱视图
+                </h2>
+                <div id="graph" class="h-96 w-full mb-4 rounded-lg overflow-hidden shadow-inner"></div>
+                <button onclick="updateGraphData()" class="w-full bg-green-500 text-white p-2 rounded-lg hover:bg-green-600 transition duration-300 flex items-center justify-center">
+                    <i class="fas fa-sync-alt mr-2"></i>
+                    更新图谱数据
+                </button>
             </div>
         </div>
         <div class="mt-8 bg-white rounded-lg shadow-lg p-6">
-            <h2 class="text-xl font-semibold mb-4">交通流量分析</h2>
-            <canvas id="trafficChart" class="w-full h-64"></canvas>
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <i class="fas fa-chart-line mr-2 text-purple-500"></i>
+                交通流量分析
+            </h2>
+            <canvas id="trafficChart" class="w-full h-64 rounded-lg shadow-inner"></canvas>
             <div id="dataCollectionStatus" class="mt-4 text-center text-gray-600"></div>
         </div>
     </div>
 
+    <footer class="bg-gray-800 text-white mt-12 py-6">
+        <div class="container mx-auto text-center">
+            <p>&copy; 2024 郑州市交通优化可视化系统. All rights reserved.</p>
+        </div>
+    </footer>
+
     <script>
         const BACKEND_URL = 'https://zhengzhou-traffic-optimization-9624fa3fd60d.herokuapp.com';
 
-        // 初始化百度地图
         let map;
         let driving;
         let autocompleteStart;
@@ -74,7 +118,7 @@
 
         function initMap() {
             map = new BMap.Map("map");
-            let point = new BMap.Point(113.6253, 34.7466); // 郑州市中心坐标
+            let point = new BMap.Point(113.6253, 34.7466);
             map.centerAndZoom(point, 12);
             map.enableScrollWheelZoom(true);
 
@@ -85,25 +129,37 @@
                         let plan = results.getPlan(0);
                         let distance = plan.getDistance(true);
                         let duration = plan.getDuration(true);
-                        document.getElementById('info').innerHTML = `距离：${distance}，预计时间：${duration}`;
+                        document.getElementById('info').innerHTML = `
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <i class="fas fa-road mr-2 text-blue-500"></i>
+                                    距离：${distance}
+                                </div>
+                                <div>
+                                    <i class="fas fa-clock mr-2 text-green-500"></i>
+                                    预计时间：${duration}
+                                </div>
+                            </div>
+                        `;
                         
-                        // 将路线信息存入后端
                         saveRouteToBackend(document.getElementById('start').value, document.getElementById('end').value, distance, duration);
                     } else {
-                        document.getElementById('info').innerHTML = "无法获取路线，错误码：" + driving.getStatus();
+                        document.getElementById('info').innerHTML = `
+                            <div class="text-red-500">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                无法获取路线，错误码：${driving.getStatus()}
+                            </div>
+                        `;
                     }
                 }
             });
 
-            // 添加交通流量图层
             var traffic = new BMap.TrafficLayer();
             map.addTileLayer(traffic);
 
-            // 添加一些示例标记
             addMarker(new BMap.Point(113.6253, 34.7466), "郑州市中心");
             addMarker(new BMap.Point(113.6615, 34.7568), "郑州东站");
 
-            // 初始化自动完成
             initAutocomplete();
         }
 
@@ -142,8 +198,8 @@
 
         function showLoading(elementId, message) {
             document.getElementById(elementId).innerHTML = `
-                <div class="flex items-center justify-center">
-                    <svg class="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
+                <div class="flex items-center justify-center text-blue-500">
+                    <svg class="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -163,7 +219,6 @@
 
             showLoading('info', '正在规划路线...');
 
-            // 使用地址解析器确保地址有效
             let geocoder = new BMap.Geocoder();
             geocoder.getPoint(start, function(startPoint){
                 if (startPoint) {
@@ -171,11 +226,21 @@
                         if (endPoint) {
                             driving.search(startPoint, endPoint);
                         } else {
-                            document.getElementById('info').innerHTML = "无法解析终点地址，请检查输入";
+                            document.getElementById('info').innerHTML = `
+                                <div class="text-red-500">
+                                    <i class="fas fa-exclamation-circle mr-2"></i>
+                                    无法解析终点地址，请检查输入
+                                </div>
+                            `;
                         }
                     }, "郑州市");
                 } else {
-                    document.getElementById('info').innerHTML = "无法解析起点地址，请检查输入";
+                    document.getElementById('info').innerHTML = `
+                        <div class="text-red-500">
+                            <i class="fas fa-exclamation-circle mr-2"></i>
+                            无法解析起点地址，请检查输入
+                        </div>
+                    `;
                 }
             }, "郑州市");
         }
@@ -199,7 +264,6 @@
             }
         }
 
-        // 初始化知识图谱可视化
         let network;
 
         async function initGraph() {
@@ -220,26 +284,57 @@
                     const duration = record.duration;
 
                     if (!nodes.get(source)) {
-                        nodes.add({ id: source, label: source });
+                        nodes.add({ id: source, label: source, color: '#4CAF50' });
                     }
                     if (!nodes.get(target)) {
-                        nodes.add({ id: target, label: target });
+                        nodes.add({ id: target, label: target, color: '#4CAF50' });
                     }
 
                     edges.add({ 
                         from: source, 
                         to: target, 
                         label: `${distance}\n${duration}`,
-                        arrows: 'to'
+                        arrows: 'to',
+                        color: { color: '#2196F3', highlight: '#FFC107' }
                     });
                 });
 
                 const container = document.getElementById('graph');
                 const data = { nodes, edges };
                 const options = {
-                    physics: false,
-                    interaction: { hover: true }
-                };
+                    physics: {
+                        stabilization: false,
+                        barnesHut: {
+                            gravitationalConstant: -2000,
+                            centralGravity: 0.3,
+                            springLength: 95,
+                            springConstant: 0.04,
+                            damping: 0.09,
+                            avoidOverlap: 0
+                        }
+                    },
+                    interaction: { hover: true },
+                    nodes: {
+        shape: 'dot',
+        size: 10,
+        font: {
+            size: 12,
+            color: '#000000'
+        },
+        borderWidth: 2
+    },
+    edges: {
+        width: 2,
+        font: {
+            size: 10,
+            align: 'middle'
+        },
+        color: { inherit: 'from' },
+        smooth: {
+            type: 'continuous'
+        }
+    }
+};
                 network = new vis.Network(container, data, options);
 
                 network.on("click", function (params) {
@@ -250,7 +345,12 @@
                 });
             } catch (error) {
                 console.error('Error initializing graph:', error);
-                document.getElementById('graph').innerHTML = '加载图谱数据时出错';
+                document.getElementById('graph').innerHTML = `
+                    <div class="flex items-center justify-center h-full text-red-500">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        加载图谱数据时出错
+                    </div>
+                `;
             }
         }
 
@@ -261,27 +361,62 @@
                     throw new Error('Network response was not ok');
                 }
                 const records = await response.json();
-                let details = `从 ${nodeId} 出发的路线:\n`;
+                let details = `<div class="p-4 bg-white rounded-lg shadow-lg">
+                    <h3 class="text-lg font-semibold mb-2">从 ${nodeId} 出发的路线:</h3>
+                    <ul class="list-disc pl-5">`;
                 records.forEach(record => {
-                    details += `到 ${record.destination}: 距离 ${record.distance}, 时间 ${record.duration}\n`;
+                    details += `<li class="mb-1">
+                        <span class="font-medium">到 ${record.destination}:</span> 
+                        距离 ${record.distance}, 时间 ${record.duration}
+                    </li>`;
                 });
-                alert(details);
+                details += `</ul></div>`;
+                
+                // 使用自定义模态框而不是alert
+                showModal(details);
             } catch (error) {
                 console.error('Error fetching node details:', error);
-                alert('获取节点详情时出错');
+                showModal(`
+                    <div class="text-red-500">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        获取节点详情时出错
+                    </div>
+                `);
             }
         }
 
-        async function updateGraphData() {
-            showLoading('dataCollectionStatus', '正在更新图谱数据...');
-            
-            // 更新图谱
-            await initGraph();
-            
-            document.getElementById('dataCollectionStatus').innerHTML = "数据已更新";
+        function showModal(content) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white p-6 rounded-lg max-w-lg w-full mx-4">
+                    ${content}
+                    <button class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300">
+                        关闭
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            modal.querySelector('button').addEventListener('click', () => {
+                document.body.removeChild(modal);
+            });
         }
 
-        // 交通流量图表
+        async function updateGraphData() {
+            showLoading('graph', '正在更新图谱数据...');
+            await initGraph();
+            document.getElementById('dataCollectionStatus').innerHTML = `
+                <div class="text-green-500">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    数据已更新
+                </div>
+            `;
+            setTimeout(() => {
+                document.getElementById('dataCollectionStatus').innerHTML = '';
+            }, 3000);
+        }
+
         let trafficChart;
 
         function initTrafficChart() {
@@ -294,15 +429,40 @@
                         label: '交通流量',
                         data: [],
                         borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.1,
+                        fill: true
                     }]
                 },
                 options: {
                     responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: '实时交通流量'
+                        }
+                    },
                     scales: {
                         y: {
-                            beginAtZero: true
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '流量'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '时间'
+                            }
                         }
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
                     }
                 }
             });
@@ -310,7 +470,7 @@
 
         function updateTrafficChart() {
             const time = new Date().toLocaleTimeString();
-            const value = Math.floor(Math.random() * 100); // 模拟交通流量数据
+            const value = Math.floor(Math.random() * 100);
 
             trafficChart.data.labels.push(time);
             trafficChart.data.datasets[0].data.push(value);
@@ -323,14 +483,12 @@
             trafficChart.update();
         }
 
-        // 实时数据更新
         function startRealTimeUpdates() {
             setInterval(() => {
                 updateTrafficChart();
-            }, 5000); // 每5秒更新一次
+            }, 5000);
         }
 
-        // 页面加载完成后初始化
         window.onload = function() {
             initMap();
             initGraph();
